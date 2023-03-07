@@ -1,5 +1,6 @@
 #!/bin/bash
-
+#TODO: Do a quick overview of the following items: DRY, what I want to achieve with this, check status of cluster
+#Add arguments to the bash scripts
 RED="31"
 GREEN="32"
 YELLOW="33"
@@ -14,26 +15,27 @@ install_dep(){
   printf "${BOLDYELLOW}\n[INFO]Validating dependencies${ENDCOLOR}"
   if ! command -v brew &> /dev/null
   then
-    printf "\n${BOLDRED}[ERROR]Brew could not be found, install it from here https://brew.sh/"
+    printf "\n${BOLDRED}[ERROR]Package Manager *Brew* could not be found, install it from here https://brew.sh/"
     exit
   fi
+
   if command -v multipass &> /dev/null
   then
-    printf "${BOLDGREEN}\n[INFO]Ready to Go \n${ENDCOLOR}"
+    printf "${BOLDGREEN}\n[INFO]Dependecy is ready...continuing\n${ENDCOLOR}"
   else
     printf  "${BOLDGREEN}\n[OK]Installing multipass Canonical tool \n${ENDCOLOR}"
     brew install --cask multipass
-  fi  
+  fi
   printf  "${BOLDGREEN}"
   multipass version 
   printf  "${ENDCOLOR}"
 }
 
-create_cluster(){
+cluster_create(){
   NUM_NODES=$1
   UBUNTU_VER="22.04"
   printf "${BOLDYELLOW}\n[INFO]Creating k3s Master Node${ENDCOLOR}"
-  multipass launch -c 1 -m 2G -d 4G -n k3s-master $UBUNTU_VER
+  multipass launch -c 1 -m 2G -d 4G -n k3s-master $UBUNTU_VER --cloud-init ./cloud-init.yaml
   printf "${BOLDYELLOW}\n[INFO]Installing k3 on Master Node${ENDCOLOR}"
   multipass exec k3s-master -- bash -c "curl -sfL https://get.k3s.io | sh -"
   TOKEN=$(multipass exec k3s-master sudo cat /var/lib/rancher/k3s/server/node-token)
@@ -44,7 +46,7 @@ create_cluster(){
 
   printf "${BOLDYELLOW}\n[INFO]Creating k3s Worker Nodes${ENDCOLOR}"
   for f in $(seq 1 $NUM_NODES); do
-    multipass launch -c 1 -m 1G -d 4G -n k3s-worker-$f $UBUNTU_VER
+    multipass launch -c 1 -m 1G -d 4G -n k3s-worker-$f $UBUNTU_VER --cloud-init ./cloud-init.yaml
   done
 
   for f in $(seq 1 $NUM_NODES); do
@@ -56,63 +58,73 @@ create_cluster(){
   printf "${BOLDGREEN}\n[OK]Giving you a shell on Master Node${ENDCOLOR}"
   multipass exec k3s-master -- bash
 }
-purge_cluster(){
-  printf "${BOLDYELLOW}\n[INFO]Cleaning Cluster"
-  read -p "Are you sure about Removing the Cluster" yn
+
+cluster_purge(){
+  cluster_status stop
+  printf "${BOLDYELLOW}\n[INFO]Purging Cluster\n"
+  read -p "[INFO]Are you sure about Removing the Cluster:   " yn
   case $yn in
-      [Yy]* ) echo "Yes removinng"; break;;
+      [Yy]* ) 
+        echo "Yes removing it"; 
+        
+        N=( $(multipass list |grep "k3s-"|awk '{print $1}') )
+        printf ${N}
+        for i in ${N[@]}; do
+          printf "${BOLDRED}\n[INFO]${action}ing $i ${ENDCOLOR}"
+          multipass delete $i
+        done
+        multipass purge
+        printf "${BOLDGREEN}\n[OK]${ENDCOLOR}Cluster has been PURGED\n"
+        exit;;
       [Nn]* ) exit;;
       * ) printf "Please answer yes or no.";;
   esac
 
 }
 
-status_cluster(){
+cluster_status(){
   action=$1
-  set -x
-  MEMBERS=( $(multipass list |grep k3s|awk '{print $1}') )
-  set +x
-  printf $MEMBERS
+  MEMBERS=( $(multipass list |grep "k3s-"|awk '{print $1}') )
   printf "${BOLDYELLOW}\n[INFO]${action}ing k3s Cluster ${ENDCOLOR}"
-  for i in $MEMBERS; do
+  for i in ${MEMBERS[@]}; do
     printf "${BOLDRED}\n[INFO]${action}ing $i ${ENDCOLOR}"
     multipass $action $i
   done 
-  printf "${BOLDYELLOW}\n[INFO]Cluster has been ${action}ed $i ${ENDCOLOR}"
-  
-  multipass list |awk '{print $1 " " $2}'
+
+  printf "${BOLDYELLOW}\n[INFO]Cluster has been ${action}ed $i ${ENDCOLOR}\n"
+
+  multipass list  
 }
 
-
-
+main(){
 printf "\n┌─┐┬─┐┌┬┐   ┌─┐┬  ┬ ┬┌─┐┌┬┐┌─┐┬─┐\n├─┤├┬┘│││───│  │  │ │└─┐ │ ├┤ ├┬┘\n┴ ┴┴└─┴ ┴   └─┘┴─┘└─┘└─┘ ┴ └─┘┴└─\n"
-
 printf "${BOLDBLUE}\n[INFO]${ENDCOLOR}Please select a valid option:"
 printf "${BOLDBLUE}\n[1]${ENDCOLOR} Create k3s Cluster "
 printf "${BOLDBLUE}\n[2]${ENDCOLOR} Stop k3s Cluster"
 printf "${BOLDBLUE}\n[3]${ENDCOLOR} Start k3s Cluster"
 printf "${BOLDBLUE}\n[4]${ENDCOLOR} Purge k3s Cluster"
-read -p "Enter your choice: >" choice
-
-case $choice in
+while true; do
+  read -p "Enter your choice: >" choice
+  case $choice in
   1)
     install_dep
     read -p "Insert the Number of K3S Nodes" nn
-    create_cluster $nn
+    cluster_create $nn
     ;;
   2)
-    status_cluster stoping
+    cluster_status stop
     ;;
   3)
-    status_cluster start
+    cluster_status start
     ;;
   4)
-    purge_cluster start
+    cluster_purge
     ;;
   *)
     printf "${BOLDRED}\n[*] Invalid choice. Please try again!!."
     ;;
-esac
+  esac
+done
+}
 
-
-
+main 

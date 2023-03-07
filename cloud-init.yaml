@@ -1,0 +1,18 @@
+timezone: America/Bogota                                                               # set the timezone of the VM
+users:                                                                                  # This is a list of users you want to add under
+#cloud-config                                                                           # DO NOT DELETE THIS LINE
+  - name: ubuntu                                                                           # adding a user called "foo"
+    sudo:                                                                               # Adding foo to sudo
+      - 'ALL=(ALL) NOPASSWD:ALL'                                                        # providing the password-less sudo privileges to foo for all the commands  
+    groups: [sudo,admin]                                                                # adding the used to sudo and admin user groups
+    shell: /bin/bash                                                                    # setting /bin/bash as default shell
+package_update: true                                                                    # perform apt update
+packages:                                                                               # list of the packages to install after first boot
+  - - python3-pip                                                                       # as an example installing pip3 during the first boot. 
+write_files:                                                                            # To write some characters into any file create list of items. 
+- content: |                                                                            # 1st content
+    alias k='kubectl'                                                                # writing  "alias k='kubernetes'"  to /etc/profile
+    export dr='--dry-run=client -oyaml'                                                 # writing "export dr='--dry-run=client -oyaml'" to /etc/profile
+
+path: /etc/profile                                                                      # name of the file where content is written.
+permissions: '0755'                                                                     # file permissions
