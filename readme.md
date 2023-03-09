@@ -11,17 +11,6 @@ I assume that you currently have brew installed.
 Create a k3s cluster with 3 nodes
 
 ```
-./provisioner newcluster 3
+./provisioner
 ```
-
-Stop and pause a cluster
-```
-./provisioner stop
-```
-
-Purge and remove all the cluster
-```
-./provisioner cleanall
-```
-
 

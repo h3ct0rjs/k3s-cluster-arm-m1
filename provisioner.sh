@@ -103,6 +103,7 @@ printf "${BOLDBLUE}\n[1]${ENDCOLOR} Create k3s Cluster "
 printf "${BOLDBLUE}\n[2]${ENDCOLOR} Stop k3s Cluster"
 printf "${BOLDBLUE}\n[3]${ENDCOLOR} Start k3s Cluster"
 printf "${BOLDBLUE}\n[4]${ENDCOLOR} Purge k3s Cluster"
+printf "${BOLDBLUE}\n[5]${ENDCOLOR} Exit\n"
 while true; do
   read -p "Enter your choice: >" choice
   case $choice in
@@ -119,6 +120,9 @@ while true; do
     ;;
   4)
     cluster_purge
+    ;;
+  5)
+    exit 0
     ;;
   *)
     printf "${BOLDRED}\n[*] Invalid choice. Please try again!!."
