@@ -8,7 +8,8 @@ Also if you want other option you could check the kind or may be the following  
 ## How to use it:
 You just need to clone this repo, here is an example how you can use this k3s provisioner :
 
-[![asciicast](https://asciinema.org/a/Am6Cxfrj3VZBUF2xSNicNV6NI.svg)](https://asciinema.org/a/Am6Cxfrj3VZBUF2xSNicNV6NI)
+
+<a href="https://asciinema.org/a/681579" target="_blank"><img src="https://asciinema.org/a/681579.svg" /></a>
 
 This will create a basic cluster where you can use this to play with the different k8s objects out there.
 
