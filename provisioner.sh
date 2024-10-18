@@ -50,10 +50,10 @@ cluster_create() {
 
   # Retrieve k3s token and IP address
   TOKEN=$(multipass exec $MASTER_NAME sudo cat /var/lib/rancher/k3s/server/node-token)
-  IP=$(multipass info $MASTER_NAME | grep IPv4 | awk '{print $2}')
+  MASTER_IP=$(multipass info $MASTER_NAME | grep IPv4 | awk '{print $2}')
 
   printf "${BOLDYELLOW}\n[INFO] More info on k3s https://k3s.io/${ENDCOLOR}\n"
-  printf "${BOLDGREEN}\n[OK] Master Node is completed setup: ${BOLDGREEN} $IP ${ENDCOLOR} \n"
+  printf "${BOLDGREEN}\n[OK] Master Node is completed setup: ${BOLDGREEN} $MASTER_IP ${ENDCOLOR} \n"
   printf "${BOLDGREEN}\n[OK] Your k3s Token is: ${BOLDGREEN} $TOKEN ${ENDCOLOR}\n"
 
   printf "${BOLDYELLOW}\n[INFO] Creating k3s Worker Nodes${ENDCOLOR}\n"
@@ -62,8 +62,8 @@ cluster_create() {
   done
 
   for f in $(seq 1 $NUM_NODES); do
-    printf "${BOLDYELLOW}\n[INFO] Installing k3s and Registering with Master Node: $IP Machine worker-$f${ENDCOLOR}\n"
-    multipass exec k3s-worker-$f -- bash -c "curl -sfL https://get.k3s.io | K3S_URL=\"https://$IP:6443\" K3S_TOKEN=\"$TOKEN\" sh -"
+    printf "${BOLDYELLOW}\n[INFO] Installing k3s and Registering with Master Node: $MASTER_IP Machine worker-$f${ENDCOLOR}\n"
+    multipass exec k3s-worker-$f -- bash -c "curl -sfL https://get.k3s.io | K3S_URL=\"https://$MASTER_IP:6443\" K3S_TOKEN=\"$TOKEN\" sh -"
   done
 
   printf "${BOLDGREEN}\n[OK] Summary:${ENDCOLOR}\n"
@@ -79,30 +79,52 @@ cluster_create() {
   fi
 
   printf "${BOLDGREEN}\n[OK] Transfering the Kubeconfig file to local folder ${ENDCOLOR} \n"
-  CONFIG_FILE="/home/ubuntu/k3s/kubeconfig.yaml"
-  NEW_CLUSTER_NAME="k3s-local-cluster"
+  VM_CONFIG_FILE="/home/ubuntu/k3s/kubeconfig.yaml"
+  NEW_CLUSTER_NAME="ninjadev-cluster"
   multipass exec $MASTER_NAME -- sudo chmod 666 /etc/rancher/k3s/k3s.yaml   # This is an experimental lab,
                                                                             # disposable avoid this if you're in a non-trust environment.
-  multipass exec $MASTER_NAME -- sudo cp /etc/rancher/k3s/k3s.yaml $CONFIG_FILE
+  multipass exec $MASTER_NAME -- sudo cp /etc/rancher/k3s/k3s.yaml $VM_CONFIG_FILE
   # Replace the server IP
-  multipass exec $MASTER_NAME -- sed -i.bak "s|server: https://.*:6443|server: https://$IP:6443|g" $CONFIG_FILE
+  printf "${BOLDGREEN}\n[OK] Updating KubeConfig File on VM ${ENDCOLOR} \n"
 
-  # Replace the cluster name
-  multipass exec $MASTER_NAME -- sed -i.bak "s|name: default|name: $NEW_CLUSTER_NAME|g" $CONFIG_FILE
-  multipass exec $MASTER_NAME -- sed -i.bak "s|cluster: default|cluster: $NEW_CLUSTER_NAME|g" $CONFIG_FILE
-  multipass exec $MASTER_NAME -- sed -i.bak "s|context: default|context: $NEW_CLUSTER_NAME|g" $CONFIG_FILE
-
-  # Remove the backup file created by sed
-  rm ${CONFIG_FILE}.bak
-  #multipass exec $MASTER_NAME -- sudo chmod 666 /home/ubuntu/kubeconfig.yaml
-
+  printf "${BOLDGREEN}\n[OK] Master VM Info ${ENDCOLOR} \n"
   multipass info $MASTER_NAME
-  multipass list
 
-  printf "${BOLDGREEN}\n[OK]Complete Please execute ${ENDCOLOR} \n"
-  printf "${BOLDGREEN}\n[OK]multipass exec ${MASTER_NAME} -- shell ${ENDCOLOR} to get access or
+  printf "${BOLDGREEN}\n[OK]Complete  ${ENDCOLOR} \n"
+  printf "${BOLDGREEN}\n[OK]Please execute multipass exec ${MASTER_NAME} -- shell ${ENDCOLOR} to
   use the kubeconfig file located in ${LOCAL_DIR}/kubeconfig.yaml \n"
 
+}
+
+kubeconfig(){
+
+  M_IP=$(multipass list | grep "k3s-master" | awk '{print $3}')
+  printf "${BOLDYELLOW}\n[INFO]Updating kubeconfig files with ${M_IP} ${ENDCOLOR}"
+  CLUSTER_NAME="ninjadev"
+  # Path to the Kubernetes configuration file
+  CONFIG_FILE="/Users/hjimenez/Tmp/Linux/kubeconfig.yaml"
+  # Validate if the file is present
+  if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Error: Configuration file $CONFIG_FILE not found."
+    exit 1
+  fi
+
+  # Replace the server IP
+  sed -i.bak "s|server: https://.*:6443|server: https://$M_IP:6443|g" $CONFIG_FILE
+
+  # Replace the cluster name
+  sed -i.bak "s|name: default|name: $CLUSTER_NAME|g" $CONFIG_FILE
+  sed -i.bak "s|cluster: default|cluster: $CLUSTER_NAME|g" $CONFIG_FILE
+  sed -i.bak "s|context: default|context: $CLUSTER_NAME|g" $CONFIG_FILE
+  sed -i.bak "s|user: default|user: $CLUSTER_NAME|g" $CONFIG_FILE
+  # Remove the backup file created by sed
+  rm ${CONFIG_FILE}.bak
+  printf "${BOLDYELLOW}\n[INFO] Showing final file ${ENDCOLOR} \n"
+  cat ${CONFIG_FILE}
+  printf "${BOLDYELLOW}\n[INFO] Moving to main kubectl config ${ENDCOLOR} \n"
+  cp ${CONFIG_FILE} ~/.kube/config
+  echo "Kubernetes configuration updated successfully.\n\n"
+  clear
 }
 
 # Function to purge the cluster
@@ -155,7 +177,8 @@ menu() {
   printf "${BOLDBLUE}\n[2]${ENDCOLOR} Stop k3s Cluster"
   printf "${BOLDBLUE}\n[3]${ENDCOLOR} Start k3s Cluster"
   printf "${BOLDBLUE}\n[4]${ENDCOLOR} Purge k3s Cluster"
-  printf "${BOLDBLUE}\n[5]${ENDCOLOR} Exit\n"
+  printf "${BOLDBLUE}\n[5]${ENDCOLOR} Kube Config Update"
+  printf "${BOLDBLUE}\n[6]${ENDCOLOR} Exit\n"
 }
 
 main(){
@@ -167,6 +190,7 @@ main(){
       install_dep
       read -p "Insert the Number of K3S Nodes> " nn
       cluster_create $nn
+      kubeconfig
       exit 0
       ;;
     2)
@@ -179,6 +203,12 @@ main(){
       cluster_purge
       ;;
     5)
+      kubeconfig
+      sleep 3
+      clear
+      menu
+      ;;
+    6)
       exit 0
       ;;
     *)
