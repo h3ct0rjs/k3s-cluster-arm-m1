@@ -45,7 +45,7 @@ cluster_create() {
   printf "${BOLDYELLOW}\n[INFO] Creating k3s Master Node${ENDCOLOR}"
   multipass launch -c 2 -m 4G -d 10G -n $MASTER_NAME $UBUNTU_VER --cloud-init ./cloud-init.yaml
 
-  printf "${BOLDYELLOW}\n[INFO] Installing k3 on Master Node${ENDCOLOR}"
+  printf "${BOLDYELLOW}\n[INFO] Installing k3 on Master Node${ENDCOLOR}\n"
   multipass exec $MASTER_NAME -- bash -c "curl -sfL https://get.k3s.io | sh -"
 
   # Retrieve k3s token and IP address
@@ -96,6 +96,7 @@ cluster_create() {
 
 }
 
+# Function to overwrite the kubeconfig file
 kubeconfig(){
 
   M_IP=$(multipass list | grep "k3s-master" | awk '{print $3}')
@@ -124,14 +125,12 @@ kubeconfig(){
   printf "${BOLDYELLOW}\n[INFO] Moving to main kubectl config ${ENDCOLOR} \n"
   cp ${CONFIG_FILE} ~/.kube/config
   echo "Kubernetes configuration updated successfully.\n\n"
-  clear
 }
 
 # Function to purge the cluster
 cluster_purge() {
   cluster_status stop
   printf "${BOLDYELLOW}\n[INFO] Purging Cluster${ENDCOLOR}"
-
   read -p "[INFO] Are you sure about Removing the Cluster? (y/n): " yn
   case $yn in
     [Yy]* )

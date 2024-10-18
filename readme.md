@@ -9,7 +9,7 @@ Also if you want other option you could check the kind or may be the following  
 You just need to clone this repo, here is an example how you can use this k3s provisioner :
 
 
-<a href="https://asciinema.org/a/681579" target="_blank"><img src="https://asciinema.org/a/681579.svg" /></a>
+<a href="https://asciinema.org/a/eqcb9D64lkZE2M1EDlSJyTcJy" target="_blank"><img src="https://asciinema.org/a/eqcb9D64lkZE2M1EDlSJyTcJy.svg" /></a>
 
 This will create a basic cluster where you can use this to play with the different k8s objects out there.
 
